@@ -11,19 +11,19 @@ Array.prototype.removeIndexImmutably = function <T>(indexToRemove: number): Arra
     return this.filter((_, ind: number): boolean => ind !== indexToRemove);
 };
 
-// Keep track of the recursive call depth so that we only check subsets of this report with one level removed
-const applyDampener = (levels: number[], callDepth: number = 0): boolean => {
+const applyDampener = (levels: number[]): boolean => {
     const firstUnsafe = getFirstUnsafe(levels);
 
     if (firstUnsafe === ALL_SAFE) {
         return true;
     }
 
-    // If an unsafe index does exist, try the safety check again with 
-    return callDepth === 0 ? (
-        applyDampener(levels.removeIndexImmutably(firstUnsafe), callDepth + 1) ||
-        applyDampener(levels.removeIndexImmutably(firstUnsafe + 1), callDepth + 1)
-     ) : false;
+    // If an unsafe index does exist, try the safety check again with (a) that index removed and
+    // (b) the next index removed to see if either can be safe
+    return (
+        getFirstUnsafe(levels.removeIndexImmutably(firstUnsafe)) === ALL_SAFE ||
+        getFirstUnsafe(levels.removeIndexImmutably(firstUnsafe + 1)) === ALL_SAFE
+    );
 };
 
 let safeLevels = 0;
