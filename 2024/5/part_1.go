@@ -20,24 +20,6 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-func deepCopyVisited(mp map[string]bool) map[string]bool {
-	copy := map[string]bool{}
-
-	for k, v := range mp {
-		copy[k] = v
-	}
-
-	return copy
-}
-
-func immutableAppendToVisited(mp map[string]bool, key string) map[string]bool {
-	copy := deepCopyVisited(mp)
-
-	copy[key] = true
-
-	return copy
-}
-
 func addToGraph(line string) {
 	pageNums := strings.Split(line, "|")
 
@@ -57,7 +39,10 @@ func dfs(pageOrder []string, currGraphNode string, target string, visited map[st
 
 	for i := 0; i < len(adjacent); i++ {
 		if _, alreadyVisited := visited[adjacent[i]]; !alreadyVisited {
-			if contains(pageOrder, adjacent[i]) && dfs(pageOrder, adjacent[i], target, immutableAppendToVisited(visited, adjacent[i])) {
+			visited[adjacent[i]] = true
+
+			// Don't consider ordering rules containing nonexistent pages
+			if contains(pageOrder, adjacent[i]) && dfs(pageOrder, adjacent[i], target, visited) {
 				return true
 			}
 		}
@@ -66,6 +51,8 @@ func dfs(pageOrder []string, currGraphNode string, target string, visited map[st
 	return false
 }
 
+// Starting from the page at index _offset_ in the page order, if any of the pages that come before it in the order
+// (0..<offset) can be reached, these pages are not in the right order.
 func verifyPageOrder(pageOrder []string, offset int) bool {
 	for i := 0; i < offset; i++ {
 		if dfs(pageOrder, pageOrder[offset], pageOrder[i], map[string]bool{}) {
