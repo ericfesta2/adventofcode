@@ -11,8 +11,8 @@ import (
 var graph map[string][]string = map[string][]string{}
 
 func contains(list []string, target string) bool {
-	for i := 0; i < len(list); i++ {
-		if list[i] == target {
+	for _, el := range list {
+		if el == target {
 			return true
 		}
 	}
@@ -20,12 +20,18 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-func immutableAppendToVisited(mp map[string]bool, key string) map[string]bool {
+func deepCopyVisited(mp map[string]bool) map[string]bool {
 	copy := map[string]bool{}
 
-	for k, v := range(mp) {
+	for k, v := range mp {
 		copy[k] = v
 	}
+
+	return copy
+}
+
+func immutableAppendToVisited(mp map[string]bool, key string) map[string]bool {
+	copy := deepCopyVisited(mp)
 
 	copy[key] = true
 
@@ -42,73 +48,74 @@ func addToGraph(line string) {
 	}
 }
 
-func verifyPageOrder(pageOrder []string, offsetFromEnd int, currGraphNode string, visited map[string]bool) bool {
-	if offsetFromEnd == len(pageOrder) {
+func dfs(pageOrder []string, currGraphNode string, target string, visited map[string]bool) bool {
+	if currGraphNode == target {
 		return true
 	}
 
-	if visited[currGraphNode] {
-		return false
-	}
-
-	newVisited := immutableAppendToVisited(visited, currGraphNode)
 	adjacent := graph[currGraphNode]
 
-	// Ensure that one of the pages after the current in pageOrder doesn't come before the current page
-	for i := 0; i < offsetFromEnd; i++ {
-		if currGraphNode == pageOrder[i] {
-			return false
-		}
-	}
-
-	newOffsetFromEnd := offsetFromEnd
-
-	// If this isn't the target node, keep looking for the same one
-	if currGraphNode == pageOrder[offsetFromEnd] {
-		newOffsetFromEnd++
-	}
-
 	for i := 0; i < len(adjacent); i++ {
-		if verifyPageOrder(pageOrder, newOffsetFromEnd, adjacent[i], newVisited) {
-			return true
+		if _, alreadyVisited := visited[adjacent[i]]; !alreadyVisited {
+			if contains(pageOrder, adjacent[i]) && dfs(pageOrder, adjacent[i], target, immutableAppendToVisited(visited, adjacent[i])) {
+				return true
+			}
 		}
 	}
 
 	return false
-	// return verifyPageOrder(pageOrder, newOffsetFromEnd, pageOrder[newOffsetFromEnd], newVisited)
+}
+
+func verifyPageOrder(pageOrder []string, offset int) bool {
+	for i := 0; i < offset; i++ {
+		if dfs(pageOrder, pageOrder[offset], pageOrder[i], map[string]bool{}) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func main() {
 	file, err := os.Open("input.txt")
 
-    if err != nil {
-        panic("Error opening file: " + err.Error())
-    }
+	if err != nil {
+		panic("Error opening file: " + err.Error())
+	}
 
-    defer file.Close()
+	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
 	middlePageSum := 0
 
-    for scanner.Scan() {
-        line := scanner.Text()
+	for scanner.Scan() {
+		line := scanner.Text()
 
 		if strings.Contains(line, "|") {
 			addToGraph(line)
 		} else if strings.Contains(line, ",") {
 			pageOrder := strings.Split(line, ",")
 
+			pageOrderCorrect := true
+
 			// Assume all pages in each page order list exist in the built graph
-			if verifyPageOrder(pageOrder, 1, pageOrder[len(pageOrder) - 1], map[string]bool{}) {
-				if middlePage, convErr := strconv.Atoi(pageOrder[len(pageOrder) / 2]); convErr == nil {
+			for i := len(pageOrder) - 1; i >= 0; i-- {
+				if !verifyPageOrder(pageOrder, i) {
+					pageOrderCorrect = false
+					break
+				}
+			}
+
+			if pageOrderCorrect {
+				if middlePage, convErr := strconv.Atoi(pageOrder[len(pageOrder)/2]); convErr == nil {
 					middlePageSum += middlePage
 				} else {
 					fmt.Println("Unexpected error with page number formatting: " + convErr.Error())
 				}
 			}
 		}
-    }
+	}
 
 	fmt.Println(middlePageSum)
 }
