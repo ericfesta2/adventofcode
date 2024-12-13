@@ -103,7 +103,6 @@ func main() {
 
 			// Assume all pages in each page order list exist in the built graph
 			for i := len(pageOrder) - 1; i >= 0; i-- {
-
 				if !verifyPageOrder(pageOrder, i) {
 					pageOrderCorrect = false
 					break
