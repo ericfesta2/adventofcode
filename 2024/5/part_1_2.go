@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
+
+const NoIncorrectlyOrderedPages = -1
 
 var graph map[string][]string = map[string][]string{}
 
@@ -30,7 +33,7 @@ func addToGraph(line string) {
 	}
 }
 
-func dfs(pageOrder []string, currGraphNode string, target string, visited map[string]bool) bool {
+func dfs(pageOrder []string, currGraphNode, target string, visited map[string]bool) bool {
 	if currGraphNode == target {
 		return true
 	}
@@ -53,6 +56,9 @@ func dfs(pageOrder []string, currGraphNode string, target string, visited map[st
 
 // Starting from the page at index _offset_ in the page order, if any of the pages that come before it in the order
 // (0..<offset) can be reached, these pages are not in the right order.
+
+// Return the index of the page that should come before the page at index _offset_ but instead comes after
+// (for part 2), or -1 if this page is in the right order.
 func verifyPageOrder(pageOrder []string, offset int) bool {
 	for i := 0; i < offset; i++ {
 		if dfs(pageOrder, pageOrder[offset], pageOrder[i], map[string]bool{}) {
@@ -61,6 +67,14 @@ func verifyPageOrder(pageOrder []string, offset int) bool {
 	}
 
 	return true
+}
+
+func parseMiddlePage(pageOrder []string) int {
+	if middlePage, convErr := strconv.Atoi(pageOrder[len(pageOrder)/2]); convErr == nil {
+		return middlePage
+	} else {
+		panic("Unexpected error with page number formatting: " + convErr.Error())
+	}
 }
 
 func main() {
@@ -74,7 +88,8 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
-	middlePageSum := 0
+	part1MiddlePageSum := 0
+	part2MiddlePageSum := 0
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -88,6 +103,7 @@ func main() {
 
 			// Assume all pages in each page order list exist in the built graph
 			for i := len(pageOrder) - 1; i >= 0; i-- {
+
 				if !verifyPageOrder(pageOrder, i) {
 					pageOrderCorrect = false
 					break
@@ -95,14 +111,20 @@ func main() {
 			}
 
 			if pageOrderCorrect {
-				if middlePage, convErr := strconv.Atoi(pageOrder[len(pageOrder)/2]); convErr == nil {
-					middlePageSum += middlePage
-				} else {
-					fmt.Println("Unexpected error with page number formatting: " + convErr.Error())
-				}
+				part1MiddlePageSum += parseMiddlePage(pageOrder)
+			} else {
+				// Topologically sort the page order based on each page's relative position in the graph.
+				// An alternative could be to swap indices in violation after calling verifyPageOrder(),
+				// but this gets the job done.
+				sort.Slice(pageOrder, func(i, j int) bool {
+					return dfs(pageOrder, pageOrder[i], pageOrder[j], map[string]bool{})
+				})
+
+				part2MiddlePageSum += parseMiddlePage(pageOrder)
 			}
 		}
 	}
 
-	fmt.Println(middlePageSum)
+	fmt.Println(part1MiddlePageSum)
+	fmt.Println(part2MiddlePageSum)
 }
